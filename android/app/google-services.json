@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "793854001670",
+    "project_id": "ads-chat-610de",
+    "storage_bucket": "ads-chat-610de.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:793854001670:android:fee980604da083bac7b987",
+        "android_client_info": {
+          "package_name": "com.example.ads_chat"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "793854001670-rsl9blengad71p9vnklpjuulkbdmap5e.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAS9faVPuShWB9C4FkT-pwCh398KIHYss4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "793854001670-rsl9blengad71p9vnklpjuulkbdmap5e.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
