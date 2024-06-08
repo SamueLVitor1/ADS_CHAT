@@ -1,9 +1,12 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 class EscreveTexto extends StatefulWidget {
   const EscreveTexto({super.key, required this.salvaMensagem});
 
-  final Function(String) salvaMensagem;
+  final Function({String text, File imgFile}) salvaMensagem;
 
   @override
   State<EscreveTexto> createState() => _EscreveTextoState();
@@ -25,7 +28,13 @@ class _EscreveTextoState extends State<EscreveTexto> {
     return Container(
       child: Row(
         children: [
-          const IconButton(onPressed: null, icon: Icon(Icons.photo_camera)),
+          IconButton(
+              onPressed: () async {
+                final XFile? imgFile =
+                    await ImagePicker().pickImage(source: ImageSource.camera);
+                if (imgFile == null) return;
+              },
+              icon: Icon(Icons.photo_camera)),
           Expanded(
               child: TextField(
             controller: captura_texto,
@@ -36,14 +45,14 @@ class _EscreveTextoState extends State<EscreveTexto> {
               })
             },
             onSubmitted: (text) {
-              widget.salvaMensagem(text);
+              widget.salvaMensagem(text: text);
               reset();
             },
           )),
           IconButton(
               onPressed: ativa_send
                   ? () {
-                      widget.salvaMensagem(captura_texto.text);
+                      widget.salvaMensagem(text: captura_texto.text);
                       reset();
                     }
                   : null,
