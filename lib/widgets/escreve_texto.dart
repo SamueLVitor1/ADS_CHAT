@@ -6,7 +6,7 @@ import 'package:image_picker/image_picker.dart';
 class EscreveTexto extends StatefulWidget {
   const EscreveTexto({super.key, required this.salvaMensagem});
 
-  final Function({String text, File imgFile}) salvaMensagem;
+  final Function({String? text, XFile? imgFile}) salvaMensagem;
 
   @override
   State<EscreveTexto> createState() => _EscreveTextoState();
@@ -15,6 +15,8 @@ class EscreveTexto extends StatefulWidget {
 class _EscreveTextoState extends State<EscreveTexto> {
   final TextEditingController captura_texto = TextEditingController();
   bool ativa_send = false;
+
+  final imagePicker = ImagePicker();
 
   void reset() {
     captura_texto.clear();
@@ -30,9 +32,10 @@ class _EscreveTextoState extends State<EscreveTexto> {
         children: [
           IconButton(
               onPressed: () async {
-                final XFile? imgFile =
-                    await ImagePicker().pickImage(source: ImageSource.camera);
+                final imgFile =
+                    await imagePicker.pickImage(source: ImageSource.camera);
                 if (imgFile == null) return;
+                widget.salvaMensagem(imgFile: imgFile); // Adicione esta linha para enviar a imagem
               },
               icon: Icon(Icons.photo_camera)),
           Expanded(
