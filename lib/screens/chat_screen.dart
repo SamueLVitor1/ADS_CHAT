@@ -1,9 +1,12 @@
 import 'dart:io';
 
+import 'package:ads_chat/widgets/chat_message.dart';
 import 'package:ads_chat/widgets/escreve_texto.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:image_picker/image_picker.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -14,41 +17,109 @@ class ChatScreen extends StatefulWidget {
 }
 
 class _ChatScreenState extends State<ChatScreen> {
-  void _salvaMensagem({String? text, XFile? imgFile}) async {
-    Map<String, dynamic> data = {};
+  final GoogleSignIn googleSignIn = GoogleSignIn();
+  User? _currentUser;
 
-    if (imgFile != null) {
-      final myPhoto = File(imgFile.path);
-      UploadTask task = FirebaseStorage.instance
-          .ref()
-          .child(DateTime.now().millisecondsSinceEpoch.toString())
-          .putFile(myPhoto);
-      TaskSnapshot taskSnapshot = await task;
-      String url = await taskSnapshot.ref.getDownloadURL();
-      data['imgUrl'] = url;
+  void initState() {
+    super.initState();
+    FirebaseAuth.instance.authStateChanges().listen((user) {
+      _currentUser = user;
+    });
+
+    if (_currentUser == null) {
+      _getUser();
     }
+  }
 
-    if (text != null) data['texto'] = text;
+  Future<User?> _getUser() async {
+    if (_currentUser != null) return _currentUser;
+    try {
+      final GoogleSignInAccount? googleSignInAccount =
+          await googleSignIn.signIn();
 
-    FirebaseFirestore.instance
-        .collection('Mensagens')
-        .add(data); // Corrigido o nome da coleção aqui
+      final GoogleSignInAuthentication? googleSignInAuthentication =
+          await googleSignInAccount?.authentication;
+
+      final AuthCredential credential = GoogleAuthProvider.credential(
+        idToken: googleSignInAuthentication?.idToken,
+        accessToken: googleSignInAuthentication?.accessToken,
+      );
+
+      final UserCredential userCredential =
+          await FirebaseAuth.instance.signInWithCredential(credential);
+
+      final User? user = userCredential.user;
+      setState(() {
+        _currentUser = user;
+      });
+    } catch (error) {
+      return null;
+    }
+  }
+
+  void _salvaMensagem({String? text, XFile? imgFile}) async {
+    final User? user = _currentUser;
+
+    if (user == null) {
+      print("Não foi possível realizar o login, tente novamente!");
+      _getUser();
+    } else {
+      Map<String, dynamic> data = {
+        "uid": user!.uid,
+        "senderName": user.displayName,
+        "senderPhotoUrl": user.photoURL
+      };
+
+      if (imgFile != null) {
+        final myPhoto = File(imgFile.path);
+        UploadTask task = FirebaseStorage.instance
+            .ref()
+            .child(DateTime.now().millisecondsSinceEpoch.toString())
+            .putFile(myPhoto);
+        TaskSnapshot taskSnapshot = await task;
+        String url = await taskSnapshot.ref.getDownloadURL();
+        data['imgUrl'] = url;
+      }
+
+      if (text != null) data['texto'] = text;
+
+      data['dt_envio'] = Timestamp.now();
+
+      FirebaseFirestore.instance.collection('Mensagens').add(data);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Ads Chat'),
+        title: _currentUser == null
+            ? const Text('Ads Chat')
+            : Text(_currentUser!.displayName ?? 'Ads Chat'),
         backgroundColor: Colors.lime[100],
+        actions: [
+          IconButton(
+            icon: Icon(_currentUser == null ? Icons.login : Icons.logout),
+            onPressed: () {
+              if (_currentUser == null) {
+                _getUser();
+              } else {
+                FirebaseAuth.instance.signOut();
+                setState(() {
+                  _currentUser = null;
+                });
+              }
+            },
+          ),
+        ],
       ),
       body: Column(
         children: [
           Expanded(
             child: StreamBuilder(
               stream: FirebaseFirestore.instance
-                  .collection(
-                      'Mensagens') // Certifique-se de que o nome da coleção está correto
+                  .collection('Mensagens')
+                  .orderBy('dt_envio', descending: true)
                   .snapshots(),
               builder: (context, snapshot) {
                 switch (snapshot.connectionState) {
@@ -63,17 +134,28 @@ class _ChatScreenState extends State<ChatScreen> {
                         child: Text('Nenhuma mensagem encontrada'),
                       );
                     }
-                    List<DocumentSnapshot> messages =
-                        snapshot.data!.docs.reversed.toList();
+                    final List<DocumentSnapshot<Map<String, dynamic>>>
+                        messages = snapshot.data!.docs.toList()
+                            as List<DocumentSnapshot<Map<String, dynamic>>>;
                     return ListView.builder(
-                        itemCount: messages.length,
-                        reverse: true,
-                        itemBuilder: (context, index) {
-                          return ListTile(
-                            title: Text(messages[index]['texto'] ??
-                                'Mensagem sem texto'),
-                          );
-                        });
+                      itemCount: messages.length,
+                      reverse: true,
+                      padding: const EdgeInsets.symmetric(vertical: 32),
+                      itemBuilder: (context, index) {
+                        final messageData =
+                            messages[index].data() as Map<String, dynamic>;
+                        final String? uid = messageData['uid'];
+                        final bool minha =
+                            uid == _currentUser?.uid ? true : false;
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          child: ChatMessage(
+                            data: messageData,
+                            minha: minha,
+                          ),
+                        );
+                      },
+                    );
                 }
               },
             ),
